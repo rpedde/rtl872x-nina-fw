@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-
 #define USI_SPI_DIR   (_PA_13)
 #define USI_SPI_READY (_PA_12)
 #define USI_SPI_MISO  (PA_25)
@@ -21,10 +20,9 @@
 extern int spi_dispatch_setup(void);
 extern int spi_dispatch_run(void);
 
-extern void spi_dispatch_set_direction(int);
-extern void spi_dispatch_set_data_ready(int);
-
 extern int spi_dispatch_read(uint8_t *, uint16_t);
 extern int spi_dispatch_write(uint8_t *, uint16_t);
+
+typedef int (*command_handler)(const uint8_t *, uint8_t *);
 
 #endif /* _SPI_DISPATCH_H_ */
