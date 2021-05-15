@@ -2,16 +2,30 @@
 
 #include <stdio.h>
 
-#include "spi/spi-dispatch.h"
+#include "spi-dispatch.h"
+#include "serial-dispatch.h"
+
+int serial_mode = 1;
 
 void setup(void) {
-    spi_dispatch_setup();
+    if(serial_mode) {
+        serial_dispatch_setup();
+    } else {
+        spi_dispatch_setup();
+    }
 }
 
 
 void loop(void) {
-    printf("boot\n");
-    while(1) {
-        spi_dispatch_run();
+    if(serial_mode) {
+        printf("SERIAL_MODE\n");
+        while(1) {
+            serial_dispatch_run();
+        }
+    } else {
+        printf("SPI_MODE\n");
+        while(1) {
+            spi_dispatch_run();
+        }
     }
 }

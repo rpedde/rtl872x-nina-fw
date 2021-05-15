@@ -272,6 +272,34 @@ int spi_dispatch_write(uint8_t *buffer, uint16_t len) {
     return len;
 }
 
+int spi_dispatch_command(const uint8_t *in, uint8_t *out, uint16_t out_len) {
+    memset(out, 0x00, out_len);
+
+    int response_len = 0;
+    if(in[0] == 0xe0 && in[1] < MAX_HANDLERS) {
+        command_handler handler = command_handlers[in[1]];
+        if(handler) {
+            response_len = command_handlers[in[1]](in, out);
+        } else {
+            // printf("command not implemeneted");
+        }
+    }
+
+    if(response_len == 0) {
+        out[0] = 0xef;
+        out[1] = 0x00;
+        out[2] = 0xee;
+        response_len = 3;
+    } else {
+        out[0] = 0xe0;
+        out[1] = (0x80 | in[1]);
+        out[response_len - 1] = 0xee;
+    }
+
+    return response_len;
+}
+
+
 int spi_dispatch_run(void) {
     bool len_16 = false;
     uint8_t *ptr;
@@ -310,28 +338,7 @@ int spi_dispatch_run(void) {
         //        rx_buffer[1], rx_buffer[2],
         //        *(ptr - 1));
 
-        memset(tx_buffer, 0x0, sizeof(tx_buffer));
-
-        response_len = 0;
-        if(rx_buffer[0] == 0xe0 && rx_buffer[1] < MAX_HANDLERS) {
-            command_handler handler = command_handlers[rx_buffer[1]];
-            if(handler) {
-                response_len = command_handlers[rx_buffer[1]](rx_buffer, tx_buffer);
-            } else {
-                // printf("command not implemeneted");
-            }
-        }
-
-        if(response_len == 0) {
-            tx_buffer[0] = 0xef;
-            tx_buffer[0] = 0x00;
-            tx_buffer[0] = 0xee;
-            response_len = 3;
-        } else {
-            tx_buffer[0] = 0xe0;
-            tx_buffer[1] = (0x80 | rx_buffer[1]);
-            tx_buffer[response_len - 1] = 0xee;
-        }
+        response_len = spi_dispatch_command(rx_buffer, tx_buffer, sizeof(tx_buffer));
 
         spi_dispatch_write(tx_buffer, response_len);
         while((USI_SSI_GetTransStatus(ssi_obj.usi_dev) & 1) == 1) {};

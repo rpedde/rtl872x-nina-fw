@@ -20,8 +20,13 @@
 extern int spi_dispatch_setup(void);
 extern int spi_dispatch_run(void);
 
+extern int spi_dispatch_command(const uint8_t *, uint8_t *, uint16_t);
+
 extern int spi_dispatch_read(uint8_t *, uint16_t);
 extern int spi_dispatch_write(uint8_t *, uint16_t);
+
+extern uint8_t tx_buffer[SPI_TX_BUFFER_SIZE];
+extern uint8_t rx_buffer[SPI_RX_BUFFER_SIZE];
 
 typedef int (*command_handler)(const uint8_t *, uint8_t *);
 
