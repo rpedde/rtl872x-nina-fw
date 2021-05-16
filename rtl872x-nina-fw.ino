@@ -4,10 +4,13 @@
 
 #include "spi-dispatch.h"
 #include "serial-dispatch.h"
+#include "wifi-api.h"
 
 int serial_mode = 1;
 
 void setup(void) {
+    wifi_api_setup();
+
     if(serial_mode) {
         serial_dispatch_setup();
     } else {

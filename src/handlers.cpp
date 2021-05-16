@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "handlers.h"
+#include "wifi-api.h"
 
 const char* FIRMWARE_VERSION = "0.0.1-alpha";
 
@@ -9,7 +10,9 @@ int get_conn_status(const uint8_t *command, uint8_t *response) {
 
     response[2] = 1;  // parameters
     response[3] = 1;  // len
-    response[4] = WL_IDLE_STATUS;
+
+    if(wifi_api_conn_status(&response[4]))
+        return 0;  // error
 
     return 6;
 }
@@ -17,11 +20,10 @@ int get_conn_status(const uint8_t *command, uint8_t *response) {
 int get_mac_addr(const uint8_t *command, uint8_t *response) {
     UNUSED(command);
 
-    uint8_t mac[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
     response[2] = 1;  // parameters
     response[3] = 6;  // len
-    memcpy(&response[4], mac, 6);
+    if(wifi_api_mac_addr(&response[4])) // error
+        return 0;
 
     return 11;
 }

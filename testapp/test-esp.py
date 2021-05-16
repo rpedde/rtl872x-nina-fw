@@ -31,4 +31,4 @@ requests.set_socket(socket, rtl)
 if rtl.status == adafruit_esp32spi.WL_IDLE_STATUS:
     print('rtl found an in idle mode')
     print('firmware version: ', rtl.firmware_version)
-    print('mac addr: ', ':'.join(hex(i) for i in rtl.MAC_address))
+    # print('mac addr: ', ':'.join(hex(i) for i in rtl.MAC_address))

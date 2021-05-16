@@ -1,3 +1,12 @@
+/*
+ * This is just a dumb serial dispatcher that will do the same SPI
+ * requests over serial.  So it bundles up a serial requests, hands it
+ * off to a handler just like the SPI disaptcher does, and then returns
+ * the result over serial.  This makes it easier to poke at from a low
+ * level when the the rtl is embedded as a coprocessor in some other
+ * device (like the wio terminal)
+ */
+
 #include <Arduino.h>
 #include <stdio.h>
 #include <stdint.h>
