@@ -9,8 +9,20 @@
 #include "errors.h"
 
 
-#define GET_CLIENT_MAC  1
-#define GET_AP_MAC      2
+#define GET_CLIENT_MAC   1
+#define GET_AP_MAC       2
+
+#define MAX_SOCKETS     10
+
+#define SOCK_TYPE_UNALLOCATED 0
+#define SOCK_TYPE_IDLE        1  /* allocated but not opened */
+#define SOCK_TYPE_TCP         2
+
+
+typedef struct {
+    uint8_t type;
+    int fd;
+} socket_info_t;
 
 typedef struct {
     uint8_t status;
@@ -25,6 +37,7 @@ typedef struct {
     char password[64 + 1];
 
     /* ... */
+    socket_info_t sockets[MAX_SOCKETS];
 } api_wifi_config_t;
 
 static api_wifi_config_t wifi;
@@ -35,8 +48,23 @@ extern struct netif xnetif[NET_IF_NUM];
 static int wifi_api_error(uint8_t error);
 
 
-int wifi_api_setup(void) {
+int wifi_reset_state(bool initial) {
+    if(!initial) {
+        // need to reset all the sockets and
+        // servers.
+    }
+
     memset(&wifi, 0x0, sizeof(wifi));
+
+    for(int i=0; i<MAX_SOCKETS; i++) {
+        wifi.sockets[i].fd = -1;
+    }
+
+    return E_SUCCESS;
+}
+
+int wifi_api_setup(void) {
+    wifi_reset_state(true);
 
     if(wifi_manager_init() != RTW_SUCCESS)
         return 1;
@@ -148,7 +176,8 @@ int wifi_api_connect(char *ssid, char *password) {
         return wifi_api_error(E_PASSWORD_TOO_LONG);
 
     // back to idle with no connection info
-    memset(&wifi, 0x0, sizeof(wifi));
+    wifi_reset_state(false);
+
     res = wifi_scan_networks_with_ssid(_find_ap, (void *)&wifi, 1000, ssid, strlen(ssid));
     if(RTW_SUCCESS != res)
         return wifi_api_error(E_SCAN_ERROR);
@@ -194,6 +223,33 @@ int wifi_api_get_host_by_name(char *hostname, uint32_t *addr) {
         if(!host)
             return wifi_api_error(E_HOST_NOT_FOUND);
         memcpy(addr, host->h_addr, sizeof(host->h_addr));
+    }
+    return E_SUCCESS;
+}
+
+int wifi_api_get_socket(uint8_t *socket) {
+    for(int i=0; i<MAX_SOCKETS; i++) {
+        if(wifi.sockets[i].type == SOCK_TYPE_UNALLOCATED) {
+            wifi.sockets[i].type = SOCK_TYPE_IDLE;
+            *socket = i;
+            return E_SUCCESS;
+        }
+    }
+    return E_SOCKETS_EXHAUSTED;
+}
+
+int wifi_api_stop_socket(uint8_t socket) {
+    if(socket > MAX_SOCKETS)
+        return E_INVALID_PARAMETER;
+
+    switch(wifi.sockets[socket].type) {
+    case SOCK_TYPE_IDLE:
+        wifi.sockets[socket].type = SOCK_TYPE_UNALLOCATED;
+        break;
+    default:
+        // unhandled socket type
+        printf("unhandled socket type: %d\n", wifi.sockets[socket].type);
+        return E_INTERNAL;
     }
     return E_SUCCESS;
 }

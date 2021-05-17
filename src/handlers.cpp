@@ -10,51 +10,6 @@
 const char* FIRMWARE_VERSION = "0.0.1-alpha";
 uint32_t resolved_hostname;
 
-
-command_handler command_handlers[] = {
-    // 0x00 - 0x0f
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x10 - 0x1f
-    h_set_net, h_set_passphrase, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x20 - 0x2f
-    h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x30 - 0x3f
-    NULL, NULL, NULL, NULL,
-    h_req_host_by_name, h_get_host_by_name, NULL, h_get_firmware_version,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x40 - 0x4f
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x50 - 0x5f
-    NULL, NULL, NULL, NULL,
-    NULL
-};
-
-#define MAX_HANDLERS (sizeof(command_handlers) / sizeof(command_handlers[0]))
-
-command_handler handler_for(uint8_t command) {
-    if(command > MAX_HANDLERS)
-        return NULL;
-    return command_handlers[command];
-}
-
 /* h_set_net: 0x20
  *
  * in param 1: ssid of open network to connect to
@@ -71,9 +26,7 @@ int h_set_net(const uint8_t *command, uint8_t *response) {
     memset(ssid, 0x0, sizeof(ssid));
     memcpy(ssid, &command[4], command[3]);
 
-    int res = wifi_api_connect(ssid, NULL);
-
-    if(res)
+    if(wifi_api_connect(ssid, NULL) != E_SUCCESS)
         return 0;
 
     response[2] = 1; // number of parameters
@@ -111,9 +64,7 @@ int h_set_passphrase(const uint8_t *command, uint8_t *response) {
     memcpy(ssid, &command[4], ssid_len);
     memcpy(password, &command[5 + ssid_len], pass_len);
 
-    int res = wifi_api_connect(ssid, password);
-
-    if(res)
+    if (wifi_api_connect(ssid, password) != E_SUCCESS)
         return 0;
 
     response[2] = 1; // number of parameters
@@ -134,7 +85,7 @@ int h_get_conn_status(const uint8_t *command, uint8_t *response) {
     response[2] = 1;  // parameters
     response[3] = 1;  // len
 
-    if(wifi_api_conn_status(&response[4]))
+    if(wifi_api_conn_status(&response[4]) != E_SUCCESS)
         return 0;  // error
 
     return 6;
@@ -175,6 +126,23 @@ int h_get_mac_addr(const uint8_t *command, uint8_t *response) {
 }
 
 
+/* h_stop_client_tcp: 0x2e
+ *
+ * in param 1: socket
+ */
+int h_stop_client_tcp(const uint8_t *command, uint8_t *response) {
+    UNUSED(command);
+
+    if(wifi_api_stop_socket(command[4]) != E_SUCCESS)
+        return 0;
+
+    response[2] = 1;  // parameters
+    response[3] = 1;  // len
+    response[4] = 1;
+
+    return 6;
+}
+
 /* h_req_host_by_name: 0x35
  *
  * out param 1: success (1) or failure (0)
@@ -188,7 +156,7 @@ int h_req_host_by_name(const uint8_t *command, uint8_t *response) {
     response[2] = 1;  // parameters
     response[3] = 1;  // len
 
-    if(wifi_api_get_host_by_name(hostname, &resolved_hostname) == 0) {
+    if(wifi_api_get_host_by_name(hostname, &resolved_hostname) == E_SUCCESS) {
         response[4] = 1;
     } else {
         response[4] = 0;
@@ -224,4 +192,64 @@ int h_get_firmware_version(const uint8_t *command, uint8_t *response) {
     memcpy(&response[4], FIRMWARE_VERSION, response[3]);
 
     return 5 + response[3];
+}
+
+/* h_get_socket: 0x3f
+ *
+ * out param 1: socket number
+ */
+int h_get_socket(const uint8_t *command, uint8_t *response) {
+    UNUSED(command);
+
+    response[2] = 1;
+    response[3] = 1;
+    if(wifi_api_get_socket(&response[4]) != E_SUCCESS)
+        return 0;
+
+    return 6;
+}
+
+
+command_handler command_handlers[] = {
+    // 0x00 - 0x0f
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x10 - 0x1f
+    h_set_net, h_set_passphrase, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x20 - 0x2f
+    h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, h_stop_client_tcp, NULL,
+
+    // 0x30 - 0x3f
+    NULL, NULL, NULL, NULL,
+    h_req_host_by_name, h_get_host_by_name, NULL, h_get_firmware_version,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, h_get_socket,
+
+    // 0x40 - 0x4f
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x50 - 0x5f
+    NULL, NULL, NULL, NULL,
+    NULL
+};
+
+#define MAX_HANDLERS (sizeof(command_handlers) / sizeof(command_handlers[0]))
+
+command_handler handler_for(uint8_t command) {
+    if(command > MAX_HANDLERS)
+        return NULL;
+    return command_handlers[command];
 }
