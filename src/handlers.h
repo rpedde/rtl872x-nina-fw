@@ -5,6 +5,10 @@
 
 #define UNUSED(x) ((void)(x))
 
+typedef int (*command_handler)(const uint8_t *, uint8_t *);
+
+extern command_handler handler_for(uint8_t);
+
 extern int h_set_net(const uint8_t *, uint8_t *); // 0x10
 extern int h_set_passphrase(const uint8_t *command, uint8_t *response); // 0x11
 extern int h_get_conn_status(const uint8_t *, uint8_t *); // 0x20

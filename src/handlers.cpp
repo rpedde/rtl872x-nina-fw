@@ -10,6 +10,51 @@
 const char* FIRMWARE_VERSION = "0.0.1-alpha";
 uint32_t resolved_hostname;
 
+
+command_handler command_handlers[] = {
+    // 0x00 - 0x0f
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x10 - 0x1f
+    h_set_net, h_set_passphrase, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x20 - 0x2f
+    h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x30 - 0x3f
+    NULL, NULL, NULL, NULL,
+    h_req_host_by_name, h_get_host_by_name, NULL, h_get_firmware_version,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x40 - 0x4f
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+
+    // 0x50 - 0x5f
+    NULL, NULL, NULL, NULL,
+    NULL
+};
+
+#define MAX_HANDLERS (sizeof(command_handlers) / sizeof(command_handlers[0]))
+
+command_handler handler_for(uint8_t command) {
+    if(command > MAX_HANDLERS)
+        return NULL;
+    return command_handlers[command];
+}
+
 /* h_set_net: 0x20
  *
  * in param 1: ssid of open network to connect to

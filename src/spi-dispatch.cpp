@@ -7,43 +7,6 @@
 #include "spi-dispatch.h"
 #include "handlers.h"
 
-command_handler command_handlers[] = {
-    // 0x00 - 0x0f
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x10 - 0x1f
-    h_set_net, h_set_passphrase, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x20 - 0x2f
-    h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x30 - 0x3f
-    NULL, NULL, NULL, NULL,
-    h_req_host_by_name, h_get_host_by_name, NULL, h_get_firmware_version,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x40 - 0x4f
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
-
-    // 0x50 - 0x5f
-    NULL, NULL, NULL, NULL,
-    NULL
-};
-
-#define MAX_HANDLERS (sizeof(command_handlers) / sizeof(command_handlers[0]))
 #define min(a,b) ((a)<(b) ? (a):(b))
 
 typedef struct SSI_OBJ {
@@ -276,13 +239,11 @@ int spi_dispatch_command(const uint8_t *in, uint8_t *out, uint16_t out_len) {
     memset(out, 0x00, out_len);
 
     int response_len = 0;
-    if(in[0] == 0xe0 && in[1] < MAX_HANDLERS) {
-        command_handler handler = command_handlers[in[1]];
-        if(handler) {
-            response_len = command_handlers[in[1]](in, out);
-        } else {
-            // printf("command not implemeneted");
-        }
+    command_handler handler = handler_for(in[1]);
+    if(handler) {
+        response_len = handler(in, out);
+    } else {
+        printf("bad cmd: %02x\n", in[1]);
     }
 
     if(response_len == 0) {
