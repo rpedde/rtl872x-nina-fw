@@ -8,6 +8,7 @@
 
 
 const char* FIRMWARE_VERSION = "0.0.1-alpha";
+uint32_t resolved_hostname;
 
 /* h_set_net: 0x20
  *
@@ -25,7 +26,7 @@ int h_set_net(const uint8_t *command, uint8_t *response) {
     memset(ssid, 0x0, sizeof(ssid));
     memcpy(ssid, &command[4], command[3]);
 
-    int res = wifi_connect(ssid, NULL);
+    int res = wifi_api_connect(ssid, NULL);
 
     if(res)
         return 0;
@@ -65,7 +66,7 @@ int h_set_passphrase(const uint8_t *command, uint8_t *response) {
     memcpy(ssid, &command[4], ssid_len);
     memcpy(password, &command[5 + ssid_len], pass_len);
 
-    int res = wifi_connect(ssid, password);
+    int res = wifi_api_connect(ssid, password);
 
     if(res)
         return 0;
@@ -94,22 +95,7 @@ int h_get_conn_status(const uint8_t *command, uint8_t *response) {
     return 6;
 }
 
-/* h_get_mac_addr
- *
- * out param 1: mac of interface (only when up)
- */
-int h_get_mac_addr(const uint8_t *command, uint8_t *response) {
-    UNUSED(command);
-
-    response[2] = 1;  // parameters
-    response[3] = 6;  // len
-    wifi_api_mac_addr(&response[4]);
-
-    return 11;
-}
-
-
-/* h_get_ip_addr
+/* h_get_ip_addr: 0x21
  *
  * out param 1: ip (uint32_t)
  * out param 2: mask (uint32_t)
@@ -129,7 +115,59 @@ int h_get_ip_addr(const uint8_t *command, uint8_t *response) {
     return 19;
 }
 
-/* h_get_firmware_version
+/* h_get_mac_addr: 0x22
+ *
+ * out param 1: mac of interface (only when up)
+ */
+int h_get_mac_addr(const uint8_t *command, uint8_t *response) {
+    UNUSED(command);
+
+    response[2] = 1;  // parameters
+    response[3] = 6;  // len
+    wifi_api_mac_addr(&response[4]);
+
+    return 11;
+}
+
+
+/* h_req_host_by_name: 0x35
+ *
+ * out param 1: success (1) or failure (0)
+ */
+int h_req_host_by_name(const uint8_t *command, uint8_t *response) {
+    char hostname[255 + 1];
+
+    memset(hostname, 0x00, sizeof(hostname));
+    memcpy(hostname, &command[4], command[3]);
+
+    response[2] = 1;  // parameters
+    response[3] = 1;  // len
+
+    if(wifi_api_get_host_by_name(hostname, &resolved_hostname) == 0) {
+        response[4] = 1;
+    } else {
+        response[4] = 0;
+    }
+
+    return 6;
+}
+
+/* h_get_host_by_name: 0x35
+ *
+ * out param 1: ip (uint32_t)
+ */
+int h_get_host_by_name(const uint8_t *command, uint8_t *response) {
+    UNUSED(command);
+
+    response[2] = 1;  // parameters
+    response[3] = 4;  // len
+    memcpy(&response[4], &resolved_hostname, 4);
+
+    return 9;
+}
+
+
+/* h_get_firmware_version: 0x37
  *
  * out param 1: firmware version string
  */

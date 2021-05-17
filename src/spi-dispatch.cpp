@@ -28,7 +28,7 @@ command_handler command_handlers[] = {
 
     // 0x30 - 0x3f
     NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, h_get_firmware_version,
+    h_req_host_by_name, h_get_host_by_name, NULL, h_get_firmware_version,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
 

@@ -3,6 +3,7 @@
 #include <lwip_netconf.h>
 #include <wifi_constants.h>
 #include <osdep_service.h>
+#include <lwip/netdb.h>
 
 #include "wifi-api.h"
 #include "errors.h"
@@ -45,7 +46,7 @@ int wifi_api_setup(void) {
     if(wifi_on(RTW_MODE_STA) < 0)
         return 1;
 
-    return 0;
+    return E_SUCCESS;
 }
 
 void wifi_set_last_error(uint8_t error) {
@@ -61,7 +62,7 @@ int wifi_api_error(uint8_t error) {
 
 int wifi_api_conn_status(uint8_t *status) {
     *status = wifi.status;
-    return 0;
+    return E_SUCCESS;
 }
 
 /* [TODO] should these return values if STA is not up?
@@ -129,10 +130,10 @@ static int _find_ap(char *buf, int buflen, char *target_ssid, void *user_data) {
         }
         plen += len;
     }
-    return 0;
+    return E_SUCCESS;
 }
 
-int wifi_connect(char *ssid, char *password) {
+int wifi_api_connect(char *ssid, char *password) {
     int res;
 
     /*
@@ -182,5 +183,17 @@ int wifi_connect(char *ssid, char *password) {
     wifi.status = WL_CONNECTED;
 
     // [TODO] callback handler for disconnect event to close sockets and set status
-    return 0;
+    return E_SUCCESS;
+}
+
+int wifi_api_get_host_by_name(char *hostname, uint32_t *addr) {
+    struct hostent *host;
+
+    if (inet_aton(hostname, &addr) == 0) {
+        host = gethostbyname(hostname);
+        if(!host)
+            return wifi_api_error(E_HOST_NOT_FOUND);
+        memcpy(addr, host->h_addr, sizeof(host->h_addr));
+    }
+    return E_SUCCESS;
 }

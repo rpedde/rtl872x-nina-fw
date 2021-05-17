@@ -1,6 +1,7 @@
 #ifndef __ERRORS_H__
 #define __ERROR_H__
 
+#define E_SUCCESS            0x00
 #define E_SSID_TOO_LONG      0x01 // max len 32
 #define E_PASSWORD_TOO_LONG  0x02 // max len 64
 #define E_NOT_CONNECTED      0x03 // trying to do an operation that requires connected
@@ -11,7 +12,7 @@
 #define E_WIFI_INIT_ERROR    0x08 // couldn't initialize a network if
 #define E_WIFI_STARTUP_ERROR 0x09 // couldn't start the if
 #define E_WIFI_TIMEOUT       0x0a // timeout waiting for wlan startup
-
-
+#define E_HOSTNAME_TOO_LONG  0x0b // gethostbyname hostname too long
+#define E_HOST_NOT_FOUND     0x0c // gethostbyname lookup failed
 
 #endif /* __ERRORS_H__ */

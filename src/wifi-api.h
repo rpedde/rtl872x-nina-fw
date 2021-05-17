@@ -22,7 +22,8 @@ extern void wifi_api_mac_addr(uint8_t *);
 extern void wifi_api_get_ip(uint8_t *);
 extern void wifi_api_get_netmask(uint8_t *);
 extern void wifi_api_get_gw(uint8_t *);
+extern int wifi_api_get_host_by_name(char *, uint32_t *);
 
-extern int wifi_connect(char *ssid, char *passphrase);
+extern int wifi_api_connect(char *ssid, char *passphrase);
 
 #endif /* __WIFI_API_H__ */

@@ -38,3 +38,5 @@ print('connected')
 
 for k, v in rtl.network_data.items():
     print(f"{k:10}: {'.'.join(str(x) for x in v)}")
+
+print('.'.join(str(x) for x in rtl.get_host_by_name('www.google.com')))
