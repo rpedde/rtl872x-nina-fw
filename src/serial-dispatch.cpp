@@ -45,7 +45,22 @@ int serial_dispatch_run(void) {
 
         printf("L: %d\n", len);
 
-        Serial.readBytes(rx_buffer, len);
+        int remaining = len;
+        uint8_t *pos = rx_buffer;
+
+        while(remaining) {
+            int read = Serial.readBytes(pos, remaining);
+            remaining -= read;
+            if(!remaining)
+                break;
+
+            pos += read;
+        }
+
+        for(int x=0; x < len; x++)
+            printf("%02X:", rx_buffer[x]);
+        printf("\n");
+
         uint16_t response_len = spi_dispatch_command(rx_buffer, tx_buffer, SPI_TX_BUFFER_SIZE);
 
         printf("R: %d\n", response_len);

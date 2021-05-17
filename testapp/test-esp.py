@@ -5,7 +5,7 @@ import adafruit_requests as requests
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
 from adafruit_esp32spi import adafruit_esp32spi
 
-# from secrets import secrets
+from secrets import secrets
 
 # rtl_cs = digitalio.DigitalInOut(board.RTL_CS)
 # rtl_ready = digitalio.DigitalInOut(board.RTL_READY)
@@ -28,7 +28,13 @@ rtl = serialrtl.SerialRTL(uart, debug=3)
 
 requests.set_socket(socket, rtl)
 
+print('Firmware version: {}'.format(rtl.firmware_version.decode()))
+print('mac addr: ', ':'.join(hex(i) for i in rtl.MAC_address))
+
 if rtl.status == adafruit_esp32spi.WL_IDLE_STATUS:
-    print('rtl found an in idle mode')
-    print('firmware version: ', rtl.firmware_version)
-    # print('mac addr: ', ':'.join(hex(i) for i in rtl.MAC_address))
+    rtl.connect(secrets)
+
+print('connected')
+
+for k, v in rtl.network_data.items():
+    print(f"{k:10}: {'.'.join(str(x) for x in v)}")

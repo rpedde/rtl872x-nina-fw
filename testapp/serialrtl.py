@@ -50,7 +50,7 @@ class FakeSerialSPI:
             byte = self._serial.read(1)
 
         if self._debug:
-            print()
+            print('-- resp --')
 
         resp = (ord(self._serial.read(1)) << 8) | ord(self._serial.read(1))
 

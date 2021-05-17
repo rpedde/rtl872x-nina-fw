@@ -15,20 +15,20 @@ command_handler command_handlers[] = {
     NULL, NULL, NULL, NULL,
 
     // 0x10 - 0x1f
-    NULL, NULL, NULL, NULL,
+    h_set_net, h_set_passphrase, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
 
     // 0x20 - 0x2f
-    get_conn_status, NULL, get_mac_addr, NULL,
+    h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
 
     // 0x30 - 0x3f
     NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, get_firmware_version,
+    NULL, NULL, NULL, h_get_firmware_version,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
 
