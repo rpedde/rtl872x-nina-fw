@@ -17,5 +17,6 @@
 #define E_HOSTNAME_TOO_LONG  0x0d // gethostbyname hostname too long
 #define E_HOST_NOT_FOUND     0x0e // gethostbyname lookup failed
 #define E_SOCKETS_EXHAUSTED  0x0f // tried to allocate more sockets than available
+#define E_NOMEM              0x10 // out of memory
 
 #endif /* __ERRORS_H__ */

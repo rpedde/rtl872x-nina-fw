@@ -1,6 +1,7 @@
 #include <osdep_service.h>
 #include <string.h>
 #include <stdio.h>
+#include <lwip/def.h>
 
 #include "handlers.h"
 #include "wifi-api.h"
@@ -126,6 +127,60 @@ int h_get_mac_addr(const uint8_t *command, uint8_t *response) {
 }
 
 
+/* h_start_client_tcp: 0x2d
+ *
+ * there are two modes for this, a 5 param and a 4 param.
+ * 4 param:
+ *  in param 1: ip_addr (uint32_t)
+ *  in param 2: port (uint16_t)
+ *  in param 3: socket id (uint8_t)
+ *  in param 4: connection type
+ *
+ * 5 param:
+ *  in param 1: hostname
+ *  in param 2: ip (should be 0)
+ *  in param 3: port
+ *  in param 4: socket id
+ *  in param 5: connection type
+ *
+ * out param 1: 1 on success, 0 on failure
+ */
+int h_start_client_tcp(const uint8_t *command, uint8_t *response) {
+    char host[255 + 1];
+    uint32_t ipaddr;
+    uint16_t port;
+    uint8_t socket;
+    uint8_t type;
+
+    memset(host, 0x00, sizeof(host));
+
+    if(command[2] == 4) {
+        memcpy(&ipaddr, &command[4], sizeof(ipaddr));
+        memcpy(&port, &command[9], sizeof(port));
+        port = ntohs(port);
+        socket = command[12];
+        type = command[14];
+    } else {
+        memcpy(host, &command[4], command[3]);
+        memcpy(&ipaddr, &command[5 + command[3]], sizeof(ipaddr));
+        memcpy(&port, &command[10 + command[3]], sizeof(port));
+        port = ntohs(port);
+        socket = command[13 + command[3]];
+        type = command[15 + command[3]];
+    }
+
+    response[2] = 1;  // parameters
+    response[3] = 1;  // len
+
+    if(wifi_api_socket_connect(host, ipaddr, port, socket, type) != E_SUCCESS) {
+        response[2] = 0;
+        return 4;
+    }
+
+    response[4] = 1;
+    return 6;
+}
+
 /* h_stop_client_tcp: 0x2e
  *
  * in param 1: socket
@@ -142,6 +197,25 @@ int h_stop_client_tcp(const uint8_t *command, uint8_t *response) {
 
     return 6;
 }
+
+/* h_get_client_state_tcp: 0x2f
+ *
+ * in param 1: socket
+ * out param 2: state
+ */
+int h_get_client_state_tcp(const uint8_t *command, uint8_t *response) {
+    UNUSED(command);
+
+    if(wifi_api_get_socket_state(command[4], &response[4]) != E_SUCCESS)
+        return 0;
+
+    response[2] = 1;  // parameters
+    response[3] = 1;  // len
+
+    return 6;
+}
+
+
 
 /* h_req_host_by_name: 0x35
  *
@@ -227,7 +301,7 @@ command_handler command_handlers[] = {
     h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
-    NULL, NULL, h_stop_client_tcp, NULL,
+    NULL, h_start_client_tcp, h_stop_client_tcp, h_get_client_state_tcp,
 
     // 0x30 - 0x3f
     NULL, NULL, NULL, NULL,
