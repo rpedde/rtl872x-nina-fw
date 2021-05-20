@@ -127,6 +127,38 @@ int h_get_mac_addr(const uint8_t *command, uint8_t *response) {
 }
 
 
+
+/* h_data_sent_tcp: 0x2a
+ *
+ * in param 1: socket
+ * out param 1: data sent
+ */
+int h_data_sent_tcp(const uint8_t *command, uint8_t *response) {
+    response[2] = 1;
+    response[3] = 1;
+
+    wifi_api_write_flush(command[4]);
+    response[4] = 1;
+
+    return  6;
+}
+
+
+/* h_avail_data_tcp: 0x2b
+ *
+ * in param 1: socket
+ * out param 1: bytes available to read (uint16_t)
+ */
+int h_avail_data_tcp(const uint8_t *command, uint8_t *response) {
+    response[2] = 1;
+    response[3] = 2;
+    if (wifi_api_avail_data(command[4], (uint16_t *)&response[4]) != E_SUCCESS)
+        return 0;
+
+    return  7;
+}
+
+
 /* h_start_client_tcp: 0x2d
  *
  * there are two modes for this, a 5 param and a 4 param.
@@ -284,6 +316,37 @@ int h_get_socket(const uint8_t *command, uint8_t *response) {
 }
 
 
+/* h_send_data_tcp: 0x44
+ *
+ * in param 0: socket
+ * in param 1: length (uint16_t, not unit8_t!)
+ * out param 0: bytes written (uint16_t)
+ */
+int h_send_data_tcp(const uint8_t *command, uint8_t *response) {
+    uint8_t socket;
+    uint16_t bytes_to_write;
+    uint16_t bytes_written;
+
+    socket = command[5];
+    bytes_to_write = (command[6] << 8) | command[7];
+
+    if(wifi_api_send_data(socket, (uint8_t *)&command[8],
+                          bytes_to_write, &bytes_written) != E_SUCCESS)
+        return 0;
+
+    response[2] = 1;  // parameters
+    response[3] = 2;  // length
+    printf("handler: wrote %d\n", bytes_written);
+    memcpy(&response[4], &bytes_written, sizeof(bytes_written));
+    // response[4] = (bytes_written >> 8) & 0xff;
+    // response[5] = bytes_written & 0xff;
+    printf("r4: %d\n", response[4]);
+    printf("r5: %d\n", response[5]);
+
+    return 7;
+}
+
+
 command_handler command_handlers[] = {
     // 0x00 - 0x0f
     NULL, NULL, NULL, NULL,
@@ -300,7 +363,7 @@ command_handler command_handlers[] = {
     // 0x20 - 0x2f
     h_get_conn_status, h_get_ip_addr, h_get_mac_addr, NULL,
     NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
+    NULL, NULL, h_data_sent_tcp, h_avail_data_tcp,
     NULL, h_start_client_tcp, h_stop_client_tcp, h_get_client_state_tcp,
 
     // 0x30 - 0x3f
@@ -311,7 +374,7 @@ command_handler command_handlers[] = {
 
     // 0x40 - 0x4f
     NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL,
+    h_send_data_tcp, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
 

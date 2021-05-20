@@ -4,7 +4,7 @@
 #include <wifi_constants.h>
 #include <osdep_service.h>
 #include <lwip/netdb.h>
-//#include <lwip/tcp.h>
+#include <lwip/tcp.h>
 #include <lwip/api.h>
 #include <errno.h>
 
@@ -20,6 +20,7 @@
 typedef struct {
     uint8_t type;
     uint8_t state;
+    uint8_t nagle_enabled;
     struct netconn *pnc;
 } socket_info_t;
 
@@ -250,9 +251,15 @@ int wifi_api_stop_socket(uint8_t socket) {
         if(wifi.sockets[socket].state != SOCK_STATE_CLOSED) {
             if(wifi.sockets[socket].pnc) {
                 // not sure either of these cases is recoverable.
+                printf("shutting down netconn\n");
+                if((err = netconn_shutdown(wifi.sockets[socket].pnc, 1, 1)) != ERR_OK)
+                    printf("error shutting down netconn: %d\n", err);
+
+                printf("closing netconn\n");
                 if((err = netconn_close(wifi.sockets[socket].pnc)) != ERR_OK)
                     printf("error closing netconn: %d\n", err);
 
+                printf("deleting netconn\n");
                 if((err = netconn_delete(wifi.sockets[socket].pnc)) != ERR_OK)
                     printf("error deleting netconn: %d\n", err);
             wifi.sockets[socket].pnc = NULL;
@@ -330,6 +337,69 @@ int wifi_api_socket_connect(char *hostname, uint32_t ipaddr,
         break;
     default:
         printf("unhandled socket connect mode: %d\n", mode);
+        return E_INTERNAL;
+    }
+
+    return E_SUCCESS;
+}
+
+int wifi_api_avail_data(uint8_t socket, uint16_t *avail) {
+    UNUSED(socket);
+    UNUSED(avail);
+
+    // need to wait on recv data
+    return E_SUCCESS;
+}
+
+int wifi_api_send_data_tcp(uint8_t socket, uint8_t *data,
+                           uint16_t bytes_to_write, uint16_t *bytes_written) {
+    err_t err;
+
+    if(!wifi.sockets[socket].nagle_enabled) {
+        tcp_nagle_enable(wifi.sockets[socket].pnc->pcb.tcp);
+        wifi.sockets[socket].nagle_enabled = 1;
+    }
+
+    printf("Writing %d bytes to socket %d\n", bytes_to_write, socket);
+    err = netconn_write(wifi.sockets[socket].pnc, data, bytes_to_write, NETCONN_COPY);
+    if(err != ERR_OK) {
+        printf("Error writing: %d", err);
+        return E_INTERNAL;
+    }
+
+    *bytes_written = bytes_to_write;
+    printf("success!\n");
+    return E_SUCCESS;
+}
+
+int wifi_api_send_data(uint8_t socket, uint8_t *data,
+                       uint16_t bytes_to_write, uint16_t *bytes_written) {
+    if(socket > MAX_SOCKETS)
+        return E_INVALID_PARAMETER;
+
+    switch(wifi.sockets[socket].type) {
+    case SOCK_MODE_TCP:
+        return wifi_api_send_data_tcp(socket, data, bytes_to_write, bytes_written);
+    default:
+        printf("unhandled send data for socket type %d", wifi.sockets[socket].type);
+        return E_INTERNAL;
+    }
+
+    return E_SUCCESS;
+}
+
+int wifi_api_write_flush(uint8_t socket) {
+    if(socket > MAX_SOCKETS)
+        return E_INVALID_PARAMETER;
+
+    switch(wifi.sockets[socket].type) {
+    case SOCK_MODE_TCP:
+        if(wifi.sockets[socket].nagle_enabled) {
+            tcp_nagle_disable(wifi.sockets[socket].pnc->pcb.tcp);
+            wifi.sockets[socket].nagle_enabled = 0;
+        }
+    default:
+        printf("unhandled send data for socket type %d", wifi.sockets[socket].type);
         return E_INTERNAL;
     }
 

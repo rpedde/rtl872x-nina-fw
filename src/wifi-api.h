@@ -60,5 +60,10 @@ extern int wifi_api_socket_connect(char *hostname,
                                    uint8_t socket,
                                    uint8_t mode);
 int wifi_api_get_socket_state(uint8_t socket, uint8_t *state);
-
+int wifi_api_avail_data(uint8_t socket, uint16_t *avail);
+int wifi_api_send_data(uint8_t socket,
+                       uint8_t *data,
+                       uint16_t bytes_to_write,
+                       uint16_t *bytes_written);
+int wifi_api_write_flush(uint8_t socket);
 #endif /* __WIFI_API_H__ */

@@ -43,4 +43,6 @@ print('.'.join(str(x) for x in rtl.get_host_by_name('www.google.com')))
 
 s = socket.socket()
 s.connect(('hafnium', 8088), rtl.TCP_MODE)
+s.send(b'PUT /notify HTTP/1.0\r\ncontent-type: application/json\r\ncontent-length: 35\r\n\r\n{"summary": "test", "body": "test"}')
+time.sleep(2)
 s.close()

@@ -262,12 +262,13 @@ int spi_dispatch_command(const uint8_t *in, uint8_t *out, uint16_t out_len) {
 
 
 int spi_dispatch_run(void) {
-    bool len_16 = false;
     uint8_t *ptr;
     int len;
+    bool len_16;
     int response_len;
 
     while(1) {
+        len_16 = false;
         spi_dispatch_set_ready_pin(0);
         memset(rx_buffer, 0x0, sizeof(rx_buffer));
         ptr = rx_buffer;
@@ -275,6 +276,9 @@ int spi_dispatch_run(void) {
         while((USI_SSI_GetTransStatus(ssi_obj.usi_dev) & 1) == 0) {};
         spi_dispatch_set_ready_pin(1);
         spi_dispatch_read(ptr, 3);  // start, command, param_count
+
+        if(rx_buffer[1] == 0x44)  // send tcp data
+            len_16 = true;
 
         ptr = rx_buffer + 3;
 

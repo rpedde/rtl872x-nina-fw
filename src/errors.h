@@ -18,5 +18,6 @@
 #define E_HOST_NOT_FOUND     0x0e // gethostbyname lookup failed
 #define E_SOCKETS_EXHAUSTED  0x0f // tried to allocate more sockets than available
 #define E_NOMEM              0x10 // out of memory
+#define E_UNSUPPORTED        0x11 // unsupported operation (perhaps on this socket type)
 
 #endif /* __ERRORS_H__ */
