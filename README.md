@@ -8,15 +8,15 @@ running on the wio terminal.
 
 Stuff I'm mostly interested in having work:
 
-[x] wifi in STA mode
-[ ] wifi in AP mode (do I really need this?)
-[ ] wifi in AP/STA mode (again, do I need this?)
-[x] http connections
-[ ] https connections
-[ ] udp
-[ ] tcp server
-[ ] ssl tcp server
-[ ] udp server
+- [x] wifi in STA mode
+- [ ] wifi in AP mode (do I really need this?)
+- [ ] wifi in AP/STA mode (again, do I need this?)
+- [x] http connections
+- [ ] https connections
+- [ ] udp
+- [ ] tcp server
+- [ ] ssl tcp server
+- [ ] udp server
 
 So only http works right now, and that with some memory leaks.  Still,
 it's a start.
