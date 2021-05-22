@@ -6,9 +6,20 @@ of the arduino esp32 nina firmware for the rtl8720dn.
 My proximate goal is to get reasonable networking on circuitpython
 running on the wio terminal.
 
-This almost certainly doesn't actually work yet, unless you are
-reading this in the far distant future.  Even then, it probably
-never came to fruition.  Sorry 'bout that.
+Stuff I'm mostly interested in having work:
+
+[x] wifi in STA mode
+[ ] wifi in AP mode (do I really need this?)
+[ ] wifi in AP/STA mode (again, do I need this?)
+[x] http connections
+[ ] https connections
+[ ] udp
+[ ] tcp server
+[ ] ssl tcp server
+[ ] udp server
+
+So only http works right now, and that with some memory leaks.  Still,
+it's a start.
 
 ## Building ##
 
