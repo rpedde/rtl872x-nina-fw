@@ -15,13 +15,20 @@
 #define GET_CLIENT_MAC   1
 #define GET_AP_MAC       2
 
+#define min(a,b) ((a)<(b) ? (a):(b))
+
 #define MAX_SOCKETS     10
 
 typedef struct {
     uint8_t type;
     uint8_t state;
     uint8_t nagle_enabled;
+
+    uint8_t *current_data;
     struct netconn *pnc;
+    struct netbuf *pbuf;
+    uint16_t offset;
+    uint16_t dlen;
 } socket_info_t;
 
 typedef struct {
@@ -40,7 +47,7 @@ typedef struct {
     socket_info_t sockets[MAX_SOCKETS];
 } api_wifi_config_t;
 
-static api_wifi_config_t wifi;
+api_wifi_config_t wifi;
 static uint8_t wifi_api_last_error;
 extern struct netif xnetif[NET_IF_NUM];
 
@@ -48,21 +55,70 @@ extern struct netif xnetif[NET_IF_NUM];
 static int wifi_api_error(uint8_t error);
 
 
-int wifi_reset_state(bool initial) {
-    if(!initial) {
-        // need to reset all the sockets and
-        // servers.
+int wifi_api_teardown_socket(socket_info_t *psi) {
+    err_t err;
+
+    switch(psi->type) {
+    case SOCK_TYPE_UNALLOCATED:
+    case SOCK_TYPE_IDLE:
+        break;
+    case SOCK_TYPE_TCP:
+        if(psi->state != SOCK_STATE_CLOSED) {
+            if(psi->pbuf) {
+                netbuf_free(psi->pbuf);
+                psi->pbuf = NULL;
+            }
+
+            if(psi->pnc) {
+                printf("closing netconn\n");
+                if((err = netconn_close(psi->pnc)) != ERR_OK)
+                    printf("error closing netconn: %d\n", err);
+
+                printf("deleting netconn\n");
+                if((err = netconn_delete(psi->pnc)) != ERR_OK)
+                    printf("error deleting netconn: %d\n", err);
+            psi->pnc = NULL;
+            psi->offset = 0;
+            psi->dlen = 0;
+            }
+        }
+        break;
+    default:
+        printf("Unhandled socket type %d\n", psi->type);
+        return E_INTERNAL;
     }
-    memset(&wifi, 0x0, sizeof(wifi));
 
+    psi->type = SOCK_TYPE_UNALLOCATED;
+    return E_SUCCESS;
+}
 
-    for(int i=0; i<MAX_SOCKETS; i++)
-        wifi.sockets[i].type = SOCK_MODE_UNALLOCATED;
+int wifi_reset_state(bool initial) {
+    if(initial) {
+        memset(&wifi, 0x00, sizeof(wifi));
+        for(int idx=0; idx<MAX_SOCKETS; idx++) {
+            wifi.sockets[idx].type = SOCK_TYPE_UNALLOCATED;
+        }
+    } else {
+        wifi.status = WL_IDLE_STATUS;
+        wifi.mode = RTW_MODE_STA;
+        memset(wifi.ssid, 0x00, sizeof(wifi.ssid));
+        memset(wifi.ap_mac, 0x00, sizeof(wifi.ap_mac));
+        memset(wifi.password, 0x00, sizeof(wifi.password));
+        wifi.rssi = 0;
+        wifi.channel = 0;
+        wifi.security_type = 0;
 
+        if(!initial) {
+            for(int idx=0; idx<MAX_SOCKETS; idx++) {
+                wifi_api_teardown_socket(&wifi.sockets[idx]);
+            }
+        }
+    }
     return E_SUCCESS;
 }
 
 int wifi_api_setup(void) {
+
     wifi_reset_state(true);
 
     if(wifi_manager_init() != RTW_SUCCESS)
@@ -228,8 +284,8 @@ int wifi_api_get_host_by_name(char *hostname, uint32_t *addr) {
 
 int wifi_api_get_socket(uint8_t *socket) {
     for(int i=0; i<MAX_SOCKETS; i++) {
-        if(wifi.sockets[i].type == SOCK_MODE_UNALLOCATED) {
-            wifi.sockets[i].type = SOCK_MODE_IDLE;
+        if(wifi.sockets[i].type == SOCK_TYPE_UNALLOCATED) {
+            wifi.sockets[i].type = SOCK_TYPE_IDLE;
             *socket = i;
             return E_SUCCESS;
         }
@@ -238,52 +294,23 @@ int wifi_api_get_socket(uint8_t *socket) {
 }
 
 int wifi_api_stop_socket(uint8_t socket) {
-    err_t err;
-
     if(socket > MAX_SOCKETS)
         return E_INVALID_PARAMETER;
 
-    switch(wifi.sockets[socket].type) {
-    case SOCK_MODE_IDLE:
-        wifi.sockets[socket].type = SOCK_MODE_UNALLOCATED;
-        break;
-    case SOCK_MODE_TCP:
-        if(wifi.sockets[socket].state != SOCK_STATE_CLOSED) {
-            if(wifi.sockets[socket].pnc) {
-                // not sure either of these cases is recoverable.
-                printf("shutting down netconn\n");
-                if((err = netconn_shutdown(wifi.sockets[socket].pnc, 1, 1)) != ERR_OK)
-                    printf("error shutting down netconn: %d\n", err);
-
-                printf("closing netconn\n");
-                if((err = netconn_close(wifi.sockets[socket].pnc)) != ERR_OK)
-                    printf("error closing netconn: %d\n", err);
-
-                printf("deleting netconn\n");
-                if((err = netconn_delete(wifi.sockets[socket].pnc)) != ERR_OK)
-                    printf("error deleting netconn: %d\n", err);
-            wifi.sockets[socket].pnc = NULL;
-            }
-        }
-        wifi.sockets[socket].type = SOCK_MODE_UNALLOCATED;
-        break;
-    default:
-        // unhandled socket type
-        printf("unhandled socket type: %d\n", wifi.sockets[socket].type);
-        return E_INTERNAL;
-    }
-    return E_SUCCESS;
+    return wifi_api_teardown_socket(&wifi.sockets[socket]);
 }
 
 int wifi_api_tcp_socket_connect(ip_addr_t *ip, uint16_t port, uint8_t socket) {
+    err_t err;
+
     wifi.sockets[socket].pnc = netconn_new(NETCONN_TCP);
     if (!wifi.sockets[socket].pnc) {
         return E_NOMEM;
     }
 
-    printf("connecting\n");
-    if(netconn_connect(wifi.sockets[socket].pnc, ip, port) != ERR_OK) {
-        printf("error calling connect");
+    printf("connecting");
+    if((err = netconn_connect(wifi.sockets[socket].pnc, ip, port)) != ERR_OK) {
+        printf("error calling connect: %d\n", err);
         wifi.sockets[socket].state = SOCK_STATE_CLOSED;
         return E_SUCCESS;
     }
@@ -310,14 +337,13 @@ int wifi_api_socket_connect(char *hostname, uint32_t ipaddr,
     if(socket > MAX_SOCKETS)
         return E_INVALID_PARAMETER;
 
-    if(wifi.sockets[socket].type != SOCK_MODE_IDLE) {
+    if(wifi.sockets[socket].type != SOCK_TYPE_IDLE) {
         printf("attempt to connect a socket in state %d",
                wifi.sockets[socket].type);
         return E_INVALID_PARAMETER;
     }
 
-    memcpy(&ip, &ipaddr, sizeof(ipaddr));
-
+    ip = IPADDR4_INIT(ipaddr);
     if(hostname[0]) {
         if (inet_aton(hostname, &resolved_ip) == 0) {
             host = gethostbyname(hostname);
@@ -325,14 +351,14 @@ int wifi_api_socket_connect(char *hostname, uint32_t ipaddr,
                 return wifi_api_error(E_HOST_NOT_FOUND);
             memcpy(&resolved_ip, host->h_addr, sizeof(host->h_addr));
         }
+        ip = IPADDR4_INIT(resolved_ip);
     }
 
-    ip = IPADDR4_INIT(resolved_ip);
     printf("setting socket %d type to %d\n", socket, mode);
     wifi.sockets[socket].type = mode;
 
     switch(mode) {
-    case SOCK_MODE_TCP:
+    case SOCK_TYPE_TCP:
         return wifi_api_tcp_socket_connect(&ip, port, socket);
         break;
     default:
@@ -344,10 +370,45 @@ int wifi_api_socket_connect(char *hostname, uint32_t ipaddr,
 }
 
 int wifi_api_avail_data(uint8_t socket, uint16_t *avail) {
-    UNUSED(socket);
-    UNUSED(avail);
+    err_t err;
 
-    // need to wait on recv data
+    if(socket > MAX_SOCKETS)
+        return E_INVALID_PARAMETER;
+
+    socket_info_t *psi = &wifi.sockets[socket];
+
+    switch(psi->type) {
+    case SOCK_TYPE_TCP:
+        *avail = 0;
+
+        if(!psi->pbuf) {
+            // force a recv if possible
+            psi->pnc->recv_timeout = 1;
+
+            err = netconn_recv(psi->pnc, &psi->pbuf);
+            if(err == ERR_TIMEOUT) {
+                printf("still no data\n");
+            } else if(err != ERR_OK) {
+                printf("Error %d on recv\n", err);
+            } else {
+                printf("Got data\n");
+                psi->dlen = netbuf_len(psi->pbuf);
+            }
+            psi->pnc->recv_timeout = 0;
+        }
+
+        if(psi->pbuf) {
+            *avail = psi->dlen - psi->offset;
+            printf("len: %d\n", *avail);
+        }
+        printf("return %d bytes available\n", *avail);
+        break;
+    default:
+        printf("avail data for unsupported sock type %d",
+               wifi.sockets[socket].type);
+
+        return E_UNSUPPORTED;
+    }
     return E_SUCCESS;
 }
 
@@ -378,7 +439,7 @@ int wifi_api_send_data(uint8_t socket, uint8_t *data,
         return E_INVALID_PARAMETER;
 
     switch(wifi.sockets[socket].type) {
-    case SOCK_MODE_TCP:
+    case SOCK_TYPE_TCP:
         return wifi_api_send_data_tcp(socket, data, bytes_to_write, bytes_written);
     default:
         printf("unhandled send data for socket type %d", wifi.sockets[socket].type);
@@ -393,11 +454,78 @@ int wifi_api_write_flush(uint8_t socket) {
         return E_INVALID_PARAMETER;
 
     switch(wifi.sockets[socket].type) {
-    case SOCK_MODE_TCP:
+    case SOCK_TYPE_TCP:
         if(wifi.sockets[socket].nagle_enabled) {
             tcp_nagle_disable(wifi.sockets[socket].pnc->pcb.tcp);
             wifi.sockets[socket].nagle_enabled = 0;
         }
+    default:
+        printf("unhandled send data for socket type %d", wifi.sockets[socket].type);
+        return E_INTERNAL;
+    }
+
+    return E_SUCCESS;
+}
+
+
+
+int wifi_api_read_data_tcp(uint8_t socket, uint8_t *data,
+                           uint16_t bytes_to_read, uint16_t *bytes_read) {
+    err_t err;
+    uint8_t *outbuf = data;
+    socket_info_t *psi = &wifi.sockets[socket];
+
+    *bytes_read = 0;
+
+    while(bytes_to_read) {
+        printf("Reading %d bytes from socket %d\n", bytes_to_read, socket);
+        if(!psi->pbuf) {
+            printf("forcing read\n");
+            err = netconn_recv(psi->pnc, &psi->pbuf);
+            if(err != ERR_OK) {
+                printf("Error %d reading\n", err);
+                return E_INTERNAL;
+            }
+            psi->dlen = netbuf_len(psi->pbuf);
+            psi->offset = 0;
+
+        }
+
+        uint16_t to_copy = min(bytes_to_read, psi->dlen - psi->offset);
+        netbuf_copy_partial(psi->pbuf, outbuf, to_copy, psi->offset);
+
+        psi->offset += to_copy;
+        bytes_to_read -= to_copy;
+        *bytes_read += to_copy;
+        outbuf += to_copy;
+
+        if(psi->offset >= psi->dlen) {
+            // we have exhausted the buffer.
+            psi->offset = 0;
+            psi->dlen = 0;
+
+            netbuf_free(psi->pbuf);
+            psi->pbuf = NULL;
+
+            if(*bytes_read) {
+                printf("doing short read of %d", *bytes_read);
+                return E_SUCCESS;
+            }
+        }
+    }
+
+    printf("success!\n");
+    return E_SUCCESS;
+}
+
+int wifi_api_read_data(uint8_t socket, uint8_t *data,
+                       uint16_t bytes_to_read,  uint16_t *bytes_read) {
+    if(socket > MAX_SOCKETS)
+        return E_INVALID_PARAMETER;
+
+    switch(wifi.sockets[socket].type) {
+    case SOCK_TYPE_TCP:
+        return wifi_api_read_data_tcp(socket, data, bytes_to_read, bytes_read);
     default:
         printf("unhandled send data for socket type %d", wifi.sockets[socket].type);
         return E_INTERNAL;

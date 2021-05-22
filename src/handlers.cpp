@@ -11,7 +11,7 @@
 const char* FIRMWARE_VERSION = "0.0.1-alpha";
 uint32_t resolved_hostname;
 
-/* h_set_net: 0x20
+/* h_set_net: 0x10
  *
  * in param 1: ssid of open network to connect to
  * out param 1: 1 for success
@@ -37,7 +37,7 @@ int h_set_net(const uint8_t *command, uint8_t *response) {
     return 6;
 }
 
-/* h_set_passphrase: 0x21
+/* h_set_passphrase: 0x11
  *
  * in param 1: ssid of protected network to connect to
  * in param 2: password/passphrase
@@ -346,6 +346,31 @@ int h_send_data_tcp(const uint8_t *command, uint8_t *response) {
     return 7;
 }
 
+/* h_get_data_buf_tcp: 0x45
+ *
+ * in param 0: socket
+ * in param 1: length to read (uint16_t, not unit8_t!)
+ * out param 0: bytes written (uint16_t)
+ */
+int h_get_data_buf_tcp(const uint8_t *command, uint8_t *response) {
+    uint8_t socket;
+    uint16_t bytes_to_read;
+    uint16_t bytes_read;
+
+    socket = command[5];
+    memcpy(&bytes_to_read, &command[8], sizeof(bytes_to_read));
+
+    if(wifi_api_read_data(socket, (uint8_t *)&response[5],
+                          bytes_to_read, &bytes_read) != E_SUCCESS)
+        return 0;
+
+    response[2] = 1;  // parameters
+    response[3] = (bytes_read >> 8) & 0xff;
+    response[4] = bytes_read & 0xff;
+
+    return 6 + bytes_read;
+}
+
 
 command_handler command_handlers[] = {
     // 0x00 - 0x0f
@@ -374,7 +399,7 @@ command_handler command_handlers[] = {
 
     // 0x40 - 0x4f
     NULL, NULL, NULL, NULL,
-    h_send_data_tcp, NULL, NULL, NULL,
+    h_send_data_tcp, h_get_data_buf_tcp, NULL, NULL,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL,
 

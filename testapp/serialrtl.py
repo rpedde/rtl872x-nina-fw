@@ -36,7 +36,7 @@ class FakeSerialSPI:
         # we assume this is the whole data packet
         if self._debug >= 3:
             hexarray = map(hex, buffer[start:end])
-            print('--> {}'.format(':'.join(hexarray)))
+            print('to esp -> {}'.format(':'.join(hexarray)))
 
         header = bytearray([ord('@'), (end >> 8) & 0xff, end & 0xff])
         self._serial.write(header)
@@ -62,7 +62,7 @@ class FakeSerialSPI:
 
         if self._debug >= 3:
             hexarray = map(hex, self._resp_packet)
-            print('--> {}'.format(':'.join(hexarray)))
+            print('from esp <- {}'.format(':'.join(hexarray)))
 
     def readinto(self, buf, start=0, end=None):
         assert self._resp_packet

@@ -235,9 +235,7 @@ int spi_dispatch_write(uint8_t *buffer, uint16_t len) {
     return len;
 }
 
-int spi_dispatch_command(const uint8_t *in, uint8_t *out, uint16_t out_len) {
-    memset(out, 0x00, out_len);
-
+int spi_dispatch_command(const uint8_t *in, uint8_t *out) {
     int response_len = 0;
     command_handler handler = handler_for(in[1]);
     if(handler) {
@@ -270,7 +268,6 @@ int spi_dispatch_run(void) {
     while(1) {
         len_16 = false;
         spi_dispatch_set_ready_pin(0);
-        memset(rx_buffer, 0x0, sizeof(rx_buffer));
         ptr = rx_buffer;
 
         while((USI_SSI_GetTransStatus(ssi_obj.usi_dev) & 1) == 0) {};
@@ -303,7 +300,7 @@ int spi_dispatch_run(void) {
         //        rx_buffer[1], rx_buffer[2],
         //        *(ptr - 1));
 
-        response_len = spi_dispatch_command(rx_buffer, tx_buffer, sizeof(tx_buffer));
+        response_len = spi_dispatch_command(rx_buffer, tx_buffer);
 
         spi_dispatch_write(tx_buffer, response_len);
         while((USI_SSI_GetTransStatus(ssi_obj.usi_dev) & 1) == 1) {};

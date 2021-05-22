@@ -20,7 +20,7 @@
 extern int spi_dispatch_setup(void);
 extern int spi_dispatch_run(void);
 
-extern int spi_dispatch_command(const uint8_t *, uint8_t *, uint16_t);
+extern int spi_dispatch_command(const uint8_t *, uint8_t *);
 
 extern int spi_dispatch_read(uint8_t *, uint16_t);
 extern int spi_dispatch_write(uint8_t *, uint16_t);

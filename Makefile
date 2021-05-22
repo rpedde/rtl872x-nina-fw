@@ -1,7 +1,6 @@
 SOURCES = rtl872x-nina-fw.ino $(wildcard src/*.c) $(wildcard src/*.h)
 BOARD = realtek:AmebaD:ameba_rtl8721d
-CFLAGS = -Isrc
-
+CFLAGS = "-Isrc -DLWIP_SO_RCVBUF=1 -DCONFIG_HIGH_TP_TEST=1"
 SERIAL := /dev/ttyACM0
 
 firmware: $(SOURCES)

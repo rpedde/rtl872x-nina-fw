@@ -1,6 +1,10 @@
 #ifndef __WIFI_API_H__
 #define __WIFI_API_H__
 
+#include <wifi_constants.h>
+#include <osdep_service.h>
+
+
 #define UNUSED(x) ((void)(x))
 
 /* wifi status */
@@ -15,11 +19,11 @@
 #define WL_AP_CONNECTD     0x08
 #define WL_AP_FAILED       0x09
 
-#define SOCK_MODE_TCP         0x00
-#define SOCK_MODE_UDP         0x01
-#define SOCK_MODE_TLS         0x02
-#define SOCK_MODE_IDLE        0xfe
-#define SOCK_MODE_UNALLOCATED 0xff
+#define SOCK_TYPE_TCP         0x00
+#define SOCK_TYPE_UDP         0x01
+#define SOCK_TYPE_TLS         0x02
+#define SOCK_TYPE_IDLE        0xfe
+#define SOCK_TYPE_UNALLOCATED 0xff
 
 /* we only return a subset of these */
 #define SOCK_STATE_CLOSED      0x00
@@ -65,5 +69,10 @@ int wifi_api_send_data(uint8_t socket,
                        uint8_t *data,
                        uint16_t bytes_to_write,
                        uint16_t *bytes_written);
+int wifi_api_read_data(uint8_t socket,
+                       uint8_t *data,
+                       uint16_t bytes_to_read,
+                       uint16_t *bytes_read);
 int wifi_api_write_flush(uint8_t socket);
+
 #endif /* __WIFI_API_H__ */

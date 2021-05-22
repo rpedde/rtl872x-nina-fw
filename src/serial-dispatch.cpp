@@ -61,7 +61,7 @@ int serial_dispatch_run(void) {
             printf("%02X:", rx_buffer[x]);
         printf("\n");
 
-        uint16_t response_len = spi_dispatch_command(rx_buffer, tx_buffer, SPI_TX_BUFFER_SIZE);
+        uint16_t response_len = spi_dispatch_command(rx_buffer, tx_buffer);
 
         printf("R: %d\n", response_len);
 
