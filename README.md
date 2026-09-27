@@ -1,3 +1,11 @@
+# CLOSED #
+
+This was indeed ill-fated.  However, I did vibe code a nina compatible
+nina firmware based on the seeed rpc firmare.  You can find that (and
+run circuitpython network progams with it!) at [wio-terminal-nina-firmware](https://github.com/rpedde/wio-terminal-nina-firmware).
+
+Use that instead.  This is going to be archived.
+
 # rtl872x-nina-fw #
 
 This is probaby an ill-fated attempt to make a minimal workalike
